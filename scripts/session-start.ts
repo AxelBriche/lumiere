@@ -143,9 +143,48 @@ class IntuitionInjector {
 	}
 }
 
+// --- UpdateChecker : compare le SHA local vs GitHub ---
+
+class UpdateChecker {
+	constructor(private readonly paths: Paths) {}
+
+	check(): void {
+		const installedPluginsPath = join(
+			process.env.HOME ?? '',
+			'.claude',
+			'plugins',
+			'installed_plugins.json'
+		);
+		if (!existsSync(installedPluginsPath)) return;
+
+		try {
+			const installed = JSON.parse(readFileSync(installedPluginsPath, 'utf-8'));
+			const entry = installed.plugins?.['lumiere@lumiere']?.[0];
+			if (!entry?.gitCommitSha) return;
+
+			const localSha = entry.gitCommitSha;
+
+			// Fetch le dernier SHA de main sur GitHub (timeout 5s)
+			const response = execSync(
+				'git ls-remote https://github.com/AxelBriche/lumiere.git refs/heads/main 2>/dev/null',
+				{ timeout: 5_000, encoding: 'utf-8' }
+			);
+			const remoteSha = response.split('\t')[0]?.trim();
+
+			if (remoteSha && remoteSha !== localSha) {
+				console.log(
+					`[Lumiere] Mise a jour disponible. Pour mettre a jour : claude plugin install lumiere@lumiere`
+				);
+			}
+		} catch {
+			// Silencieux — pas critique
+		}
+	}
+}
+
 // --- Exports pour les tests ---
 
-export { Setup, IntuitionInjector };
+export { Setup, IntuitionInjector, UpdateChecker };
 
 // --- Main (uniquement quand exécuté directement, pas quand importé) ---
 
@@ -156,6 +195,7 @@ if (isDirectExecution) {
 		const paths = createPaths();
 		new Setup(paths).run();
 		new IntuitionInjector(paths).inject();
+		new UpdateChecker(paths).check();
 	} catch {
 		// Silencieux — un hook SessionStart ne doit jamais bloquer Claude Code
 		process.exit(0);
