@@ -11,7 +11,7 @@
 			"name": "lumiere",
 			"source": "./",
 			"description": "Observe les sessions Claude Code, détecte les patterns récurrents, et les transforme en intuitions réutilisables qui peuvent évoluer en skills, commandes et agents",
-			"version": "1.0.0",
+			"version": "1.1.0",
 			"author": {
 				"name": "Axel Briche",
 				"url": "https://x.com/axel_briche"
