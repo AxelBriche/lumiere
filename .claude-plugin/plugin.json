@@ -1,0 +1,13 @@
+{
+	"name": "lumiere",
+	"version": "1.0.0",
+	"description": "Système d'apprentissage par intuitions pour Claude Code",
+	"author": {
+		"name": "Axel Briche",
+		"url": "https://x.com/axel_briche"
+	},
+	"homepage": "https://github.com/AxelBriche/lumiere",
+	"repository": "https://github.com/AxelBriche/lumiere",
+	"license": "MIT",
+	"keywords": ["learning", "intuitions", "patterns", "claude-code"]
+}

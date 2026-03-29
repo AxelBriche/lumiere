@@ -1,0 +1,31 @@
+{
+	"description": "Lumiere — système d'apprentissage par intuitions",
+	"hooks": {
+		"SessionStart": [
+			{
+				"matcher": "*",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bun \"${CLAUDE_PLUGIN_ROOT}/scripts/session-start.ts\"",
+						"timeout": 10
+					}
+				],
+				"description": "Lumiere — init lazy + injection des intuitions"
+			}
+		],
+		"PostToolUse": [
+			{
+				"matcher": "*",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bun \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/observe.ts\"",
+						"timeout": 5
+					}
+				],
+				"description": "Lumiere — capture les observations"
+			}
+		]
+	}
+}
