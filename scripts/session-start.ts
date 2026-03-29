@@ -10,6 +10,7 @@
 
 import { mkdirSync, existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { execSync } from 'node:child_process';
 import { createPaths, type Paths } from './paths.js';
 
 // --- Setup : init lazy de _lumiere/ ---
@@ -53,10 +54,26 @@ class Setup {
 		writeFileSync(gitignorePath, content.trimEnd() + '\n\n# Lumiere data\n_lumiere/\n');
 	}
 
+	/** Installe les dépendances du dashboard si absentes (une seule fois) */
+	ensureDashboardDeps(): void {
+		const dashboardDir = join(this.paths.pluginRoot, 'dashboard');
+		const nodeModules = join(dashboardDir, 'node_modules');
+
+		if (existsSync(nodeModules)) return;
+		if (!existsSync(join(dashboardDir, 'package.json'))) return;
+
+		try {
+			execSync('npm install --silent', { cwd: dashboardDir, stdio: 'ignore', timeout: 60_000 });
+		} catch {
+			// Silencieux — pas critique si ça échoue
+		}
+	}
+
 	run(): void {
 		this.ensureDirectories();
 		this.ensureConfig();
 		this.ensureGitignore();
+		this.ensureDashboardDeps();
 	}
 }
 
