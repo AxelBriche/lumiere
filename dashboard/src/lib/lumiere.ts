@@ -12,6 +12,12 @@ import type { LumiereConfig, LumiereStatus, Intuition } from "./types";
 
 const LUMIERE_DIR = process.env.LUMIERE_DIR ?? path.join(process.cwd(), '_lumiere');
 
+/** Nom du workspace = nom du dossier parent de _lumiere/ */
+export function getWorkspaceName(): string {
+	const parent = path.dirname(LUMIERE_DIR);
+	return path.basename(parent);
+}
+
 const PATHS = {
 	config: path.join(LUMIERE_DIR, "config.json"),
 	observations: path.join(LUMIERE_DIR, "observations.jsonl"),

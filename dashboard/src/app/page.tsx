@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { StatusTab } from "@/components/status-tab";
 import { IntuitionsTab } from "@/components/intuitions-tab";
 import { LogsTab } from "@/components/logs-tab";
 import { ConfigTab } from "@/components/config-tab";
+import type { LumiereStatus } from "@/lib/types";
 
 const TABS = ["status", "intuitions", "logs", "config"] as const;
 type Tab = (typeof TABS)[number];
@@ -18,15 +20,31 @@ function getInitialTab(): Tab {
 
 export default function LumiereDashboard() {
 	const [tab, setTab] = useState<Tab>(getInitialTab);
+	const [workspace, setWorkspace] = useState<string>("");
 
 	// Sync le hash sans recharger la page
 	useEffect(() => {
 		window.location.hash = tab;
 	}, [tab]);
 
+	// Récupère le nom du workspace au montage
+	useEffect(() => {
+		fetch("/api/lumiere/status")
+			.then((r) => r.json())
+			.then((data: LumiereStatus) => setWorkspace(data.workspace ?? ""))
+			.catch(() => {});
+	}, []);
+
 	return (
 		<div className="mx-auto w-full max-w-5xl p-6">
-			<h1 className="mb-6 text-2xl font-bold">✦ Lumiere</h1>
+			<div className="mb-6 flex items-center gap-3">
+				<h1 className="text-2xl font-bold">Lumiere</h1>
+				{workspace && (
+					<Badge variant="secondary" className="text-sm font-normal">
+						{workspace}
+					</Badge>
+				)}
+			</div>
 
 			<Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="w-full">
 				<TabsList className="w-full">

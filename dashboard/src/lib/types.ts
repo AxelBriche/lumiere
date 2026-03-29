@@ -13,6 +13,7 @@ export interface LumiereStatus {
 	enabled: boolean;
 	intervalMinutes: number;
 	lastAnalysis: string | null;
+	workspace: string;
 }
 
 export interface Intuition {
