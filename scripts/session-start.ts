@@ -109,6 +109,13 @@ class IntuitionInjector {
 		return { id, trigger, confidence, domain };
 	}
 
+	/** Extrait la section Action d'un fichier intuition */
+	private extractAction(content: string): string {
+		const match = content.match(/## Action\n+([\s\S]*?)(?:\n## |\n---|\s*$)/);
+		if (!match) return '';
+		return match[1].trim().split('\n')[0]; // Première ligne seulement
+	}
+
 	/** Lit toutes les intuitions et les formate pour injection */
 	inject(): void {
 		if (!existsSync(this.paths.intuitions)) return;
@@ -116,28 +123,25 @@ class IntuitionInjector {
 		const files = readdirSync(this.paths.intuitions).filter((f) => f.endsWith('.md'));
 		if (files.length === 0) return;
 
-		const intuitions: IntuitionMeta[] = [];
+		const entries: { meta: IntuitionMeta; action: string }[] = [];
 
 		for (const file of files) {
 			const content = readFileSync(join(this.paths.intuitions, file), 'utf-8');
 			const meta = this.parseFrontmatter(content);
-			if (meta) intuitions.push(meta);
+			if (!meta) continue;
+			const action = this.extractAction(content);
+			if (action) entries.push({ meta, action });
 		}
 
-		if (intuitions.length === 0) return;
+		if (entries.length === 0) return;
 
 		// Trier par confiance décroissante
-		intuitions.sort((a, b) => b.confidence - a.confidence);
+		entries.sort((a, b) => b.meta.confidence - a.meta.confidence);
 
-		// Formater en bloc compact pour le contexte
-		const lines = intuitions.map(
-			(i) => `[${i.confidence.toFixed(1)}] ${i.trigger} → ${i.id} (${i.domain})`
-		);
-
-		// Écrire sur stdout → injecté dans le contexte initial de Claude
-		console.log(`\n=== Lumiere — ${intuitions.length} intuitions apprises ===`);
-		for (const line of lines) {
-			console.log(line);
+		// Format compact LLM : IF trigger THEN action (une ligne = une règle)
+		console.log(`\n=== Lumiere — ${entries.length} learned rules ===`);
+		for (const { meta, action } of entries) {
+			console.log(`- IF ${meta.trigger} THEN ${action}`);
 		}
 		console.log('');
 	}

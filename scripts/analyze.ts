@@ -46,10 +46,12 @@ if (lines.length < config.minObservations) {
 // 2. Prendre les 200 dernières (le prompt + observations doivent tenir dans la fenêtre de contexte)
 const recent = lines.slice(-200).join('\n');
 
-// 3. Construire le prompt DETAILLE (benchmarké : 8/8 patterns, capte optional chaining)
-const prompt = `# Détection de patterns — Crée des fichiers intuitions
+// 3. Construire le prompt — UNIQUEMENT des patterns projet à haute valeur
+const prompt = `# Détection de patterns PROJET — Crée des fichiers intuitions
 
-Analyse ces observations Claude Code. Pour chaque pattern récurrent (3+ fois), **crée un fichier** dans \`${paths.intuitions}/<id>.md\` avec l'outil Write.
+Analyse ces observations Claude Code. Cherche UNIQUEMENT des patterns spécifiques au projet — des pièges, des conventions, des erreurs résolues qui éviteront de refaire les mêmes erreurs.
+
+**NE CRÉE RIEN** si tu ne trouves pas de pattern à haute valeur. Zéro intuition vaut mieux que du bruit.
 
 ## Observations
 
@@ -57,39 +59,44 @@ ${recent}
 
 ---
 
-## Quoi chercher
+## Quoi chercher (UNIQUEMENT ces 3 catégories)
 
-### 1. Corrections de l'utilisateur
-L'utilisateur **corrige** ce que Claude vient de faire :
-- Un Edit est immédiatement suivi d'un autre Edit sur le même fichier qui **annule ou modifie** le premier
-- L'input contient des indices de correction : "non", "plutôt", "en fait", "pas comme ça"
-- Un undo/redo rapide (même fichier, même zone, changement contradictoire)
+### 1. Pièges et erreurs non évidentes
+Une **erreur surprenante** apparaît puis est **résolue** :
+- L'erreur n'est PAS évidente (ex: un 429 qui est en fait un modèle incompatible, pas un rate limit)
+- La cause racine est contre-intuitive ou mal documentée
+- Le fix n'est pas googlable facilement
 
-**→ Intuition** : "Quand on fait X, **préférer** Y à la place"
+**→ Intuition** : "Quand on rencontre X, la vraie cause est Y, appliquer Z"
 
-### 2. Résolutions d'erreurs
-Une **erreur** apparaît puis est **résolue** :
-- L'output d'un outil contient un message d'erreur (error, failed, exception, cannot...)
-- Les **appels suivants** corrigent le problème (Edit du même fichier, nouvelle commande Bash)
-- Le **même type d'erreur** est résolu de la **même façon** plusieurs fois
+**EXCLURE** : erreurs de syntaxe, imports manquants, typos — ce sont des erreurs triviales, pas des pièges.
 
-**→ Intuition** : "Quand on rencontre l'erreur X, **appliquer** la correction Y"
+### 2. Conventions et décisions spécifiques au projet
+Le projet a adopté une **convention non standard** ou fait un **choix d'architecture** :
+- Un pattern framework utilisé d'une façon spécifique au projet (ex: auth via beforeLoad, pas middleware)
+- Une bibliothèque qui a un comportement inattendu dans ce contexte (ex: base-ui render prop vs asChild)
+- Un workaround pour une limitation de la stack (Cloudflare Workers, D1, TanStack Start)
 
-### 3. Workflows répétés
-La **même séquence** d'outils revient plusieurs fois :
-- Même enchaînement d'outils avec des inputs de structure similaire (ex: Grep → Read → Edit)
-- Les **mêmes fichiers** changent ensemble à chaque fois
-- Des opérations **groupées dans le temps**
+**→ Intuition** : "Dans ce projet, pour X, toujours faire Y parce que Z"
 
-**→ Intuition** : "Pour faire X, **suivre** les étapes Y → Z → W"
+**EXCLURE** : conventions universelles (immutabilité, DRY, nommage) — elles sont dans les règles globales.
 
-### 4. Préférences d'outils
-Certains outils sont **systématiquement** choisis :
-- Grep est **toujours** utilisé avant Edit (vérification avant modification)
-- Read est **préféré** à Bash cat pour lire des fichiers
-- Des commandes Bash **spécifiques** sont utilisées pour certaines tâches
+### 3. Corrections utilisateur
+L'utilisateur **corrige** explicitement ce que Claude vient de faire :
+- Un Edit est immédiatement annulé/modifié avec des indices ("non", "plutôt", "pas comme ça")
+- La correction révèle une **préférence projet** (pas juste un bug de Claude)
 
-**→ Intuition** : "Pour X, **utiliser** l'outil Y plutôt que Z"
+**→ Intuition** : "Pour ce projet, préférer Y au lieu de X parce que Z"
+
+**EXCLURE** : corrections de bugs de Claude (mauvais fichier, mauvaise ligne) — ce sont des erreurs ponctuelles, pas des patterns.
+
+## LISTE NOIRE — NE JAMAIS créer d'intuition sur :
+
+- **Utilisation d'outils Claude Code** : "utiliser Glob au lieu de ls", "lire avant d'éditer", "Read avec offset" — Claude connaît déjà ses outils.
+- **Workflows génériques** : "Grep → Read → Edit", "rechercher avant d'implémenter", "lire la doc avant de coder" — ce sont des évidences.
+- **Patterns multi-agents** : "envoyer un message à un agent", "shutdown sequence" — c'est de la mécanique Claude Code, pas du savoir projet.
+- **Habitudes git** : "micro-commit", "amend après cosmétique" — ce sont des préférences utilisateur documentées ailleurs.
+- **Patterns de lecture** : "lire en parallèle", "lire partiellement" — optimisation d'outils, pas de valeur projet.
 
 ## Format de chaque fichier (OBLIGATOIRE)
 
@@ -107,7 +114,7 @@ source: session-observation
 # Titre clair et descriptif
 
 ## Action
-Une phrase concrète : quoi faire exactement.
+Une phrase concrète : quoi faire exactement. Inclure le POURQUOI (la cause racine).
 
 ## Evidence
 - Observé N fois dans la session <id>
@@ -127,48 +134,19 @@ Une phrase concrète : quoi faire exactement.
 ### Domaine
 
 Le domaine est une **string libre**. Choisis le mot qui décrit le mieux le contexte du pattern.
-Exemples : code-style, testing, git, debugging, workflow, sveltekit, drizzle, auth, tooling, typescript...
+Exemples : drizzle, auth, tanstack-router, mistral, cloudflare, shadcn, better-auth, d1, typescript...
 
 ## Règles
 
-1. **CONSERVATEUR** — 3+ occurrences minimum. Dans le doute, **ne crée rien**. Mieux vaut rater un pattern que d'en inventer un.
-2. **TRIGGERS PRÉCIS** — ✅ "quand on crée un endpoint POST sans validation" ❌ "quand on code"
-3. **PREUVES TRAÇABLES** — chaque intuition **doit** lister : combien de fois, dans quelle session, à quelle date. Sans preuves, pas d'intuition.
-4. **ZÉRO CODE SOURCE** — décrire le **pattern**, pas copier du code.
-5. **FUSIONNER LES DOUBLONS** — **lis \`${paths.intuitions}/\` d'abord**. Si une intuition similaire existe, mets-le à jour au lieu d'en créer un nouveau.
-6. **UNE INTUITION = UN COMPORTEMENT** — chaque intuition décrit un seul pattern. Pas de fourre-tout.
-7. Chaque intuition = **un appel Write**
-
-## Exemple complet
-
-Observations :
-\`\`\`
-{"event":"tool_complete","tool":"Grep","input":"pattern: useState","session":"abc123"}
-{"event":"tool_complete","tool":"Read","input":"src/hooks/useAuth.ts","session":"abc123"}
-{"event":"tool_complete","tool":"Edit","input":"src/hooks/useAuth.ts...","session":"abc123"}
-\`\`\`
-(cette séquence Grep → Read → Edit apparaît **5 fois**)
-
-→ Fichier créé \`grep-read-before-edit.md\` :
-\`\`\`
----
-id: grep-read-before-edit
-trigger: "quand on modifie du code existant"
-confidence: 0.5
-domain: workflow
-source: session-observation
----
-
-# Chercher et lire avant de modifier
-
-## Action
-Avant de modifier un fichier avec Edit, toujours chercher le contexte avec Grep puis lire le fichier complet avec Read.
-
-## Evidence
-- Observé 5 fois dans la session abc123
-- Pattern : séquence Grep → Read → Edit sur le même fichier
-- Dernière observation : 2026-03-26
-\`\`\``;
+1. **ULTRA-CONSERVATEUR** — 3+ occurrences minimum. Dans le doute, **ne crée rien**. Mieux vaut 0 intuitions que 1 intuition générique.
+2. **TEST DU PROJET** — Avant de créer, demande-toi : "est-ce spécifique à CE projet ou à TOUT projet ?" Si c'est universel → ne crée pas.
+3. **TEST DE LA SURPRISE** — "Un dev senior serait-il surpris par ce comportement ?" Si non → ne crée pas.
+4. **TRIGGERS PRÉCIS** — ✅ "quand Mistral retourne 429 sur des images base64" ❌ "quand on appelle une API"
+5. **PREUVES TRAÇABLES** — chaque intuition **doit** lister : combien de fois, dans quelle session, à quelle date.
+6. **FUSIONNER LES DOUBLONS** — **lis \`${paths.intuitions}/\` d'abord**. Si une intuition similaire existe, mets-le à jour au lieu d'en créer un nouveau.
+7. **UNE INTUITION = UN COMPORTEMENT** — chaque intuition décrit un seul pattern.
+8. **ZÉRO CODE SOURCE** — décrire le pattern, pas copier du code.
+9. Chaque intuition = **un appel Write**`;
 
 // 4. Écrire le prompt dans un fichier temp (évite les problèmes d'échappement shell)
 const promptPath = join(tmpdir(), `lumiere-prompt-${Date.now()}.txt`);
