@@ -38,7 +38,7 @@ export function IntuitionsTab() {
 
 	useEffect(() => {
 		fetchIntuitions();
-		const interval = setInterval(fetchIntuitions, 10000);
+		const interval = setInterval(fetchIntuitions, 30_000);
 		return () => clearInterval(interval);
 	}, []);
 

@@ -77,11 +77,17 @@ export function getObserverStatus(): LumiereStatus {
 			.filter((f) => f.endsWith(".md")).length;
 	}
 
-	// Trouver la dernière analyse dans le log
+	// Lire seulement les derniers 8Ko du log pour trouver la dernière analyse
 	let lastAnalysis: string | null = null;
 	if (fs.existsSync(PATHS.observerLog)) {
-		const logContent = fs.readFileSync(PATHS.observerLog, "utf-8").trim();
-		const lines = logContent.split("\n").reverse();
+		const stat = fs.statSync(PATHS.observerLog);
+		const TAIL_SIZE = 8192;
+		const start = Math.max(0, stat.size - TAIL_SIZE);
+		const fd = fs.openSync(PATHS.observerLog, "r");
+		const buffer = Buffer.alloc(Math.min(TAIL_SIZE, stat.size));
+		fs.readSync(fd, buffer, 0, buffer.length, start);
+		fs.closeSync(fd);
+		const lines = buffer.toString("utf-8").split("\n").reverse();
 		for (const line of lines) {
 			if (line.includes("Analyse lancée") || line.includes("Analyse terminée")) {
 				const match = line.match(/\[(.*?)\]/);
@@ -114,20 +120,6 @@ export function signalObserver(signal: "SIGUSR1" | "SIGTERM"): boolean {
 	}
 }
 
-// --- Logs ---
-
-export function readLogLines(n: number): string[] {
-	if (!fs.existsSync(PATHS.observerLog)) return [];
-	const content = fs.readFileSync(PATHS.observerLog, "utf-8").trim();
-	if (!content) return [];
-	const lines = content.split("\n");
-	return lines.slice(-n);
-}
-
-export function getLogFilePath(): string {
-	return PATHS.observerLog;
-}
-
 // --- Intuitions ---
 
 export function listIntuitions(): Intuition[] {
@@ -139,7 +131,6 @@ export function listIntuitions(): Intuition[] {
 		.map((filename) => {
 			const filepath = path.join(PATHS.intuitions, filename);
 			const raw = fs.readFileSync(filepath, "utf-8");
-			const stat = fs.statSync(filepath);
 			const { data, content } = matter(raw);
 			return {
 				id: data.id ?? filename.replace(".md", ""),
@@ -149,7 +140,7 @@ export function listIntuitions(): Intuition[] {
 				source: data.source ?? "",
 				filename,
 				content: content.trim(),
-				createdAt: stat.birthtime.toISOString(),
+				createdAt: data.created_at ?? new Date().toISOString(),
 			};
 		});
 }
@@ -160,7 +151,6 @@ export function readIntuition(
 	const filepath = path.join(PATHS.intuitions, filename);
 	if (!fs.existsSync(filepath)) return null;
 	const raw = fs.readFileSync(filepath, "utf-8");
-	const stat = fs.statSync(filepath);
 	const { data, content } = matter(raw);
 	return {
 		raw,
@@ -172,7 +162,7 @@ export function readIntuition(
 			source: data.source ?? "",
 			filename,
 			content: content.trim(),
-			createdAt: stat.birthtime.toISOString(),
+			createdAt: data.created_at ?? new Date().toISOString(),
 		},
 	};
 }

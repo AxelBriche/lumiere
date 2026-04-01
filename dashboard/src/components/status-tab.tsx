@@ -56,7 +56,7 @@ export function StatusTab() {
 
 	useEffect(() => {
 		fetchStatus();
-		const interval = setInterval(fetchStatus, 5000);
+		const interval = setInterval(fetchStatus, 30_000);
 		return () => clearInterval(interval);
 	}, [fetchStatus]);
 
@@ -106,7 +106,7 @@ export function StatusTab() {
 						});
 					}
 				}
-			}, 3000);
+			}, 5000);
 		} else {
 			setAnalyzing(false);
 			toast.error("Impossible de lancer l'analyse", {

@@ -5,11 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { StatusTab } from "@/components/status-tab";
 import { IntuitionsTab } from "@/components/intuitions-tab";
-import { LogsTab } from "@/components/logs-tab";
 import { ConfigTab } from "@/components/config-tab";
 import type { LumiereStatus } from "@/lib/types";
 
-const TABS = ["status", "intuitions", "logs", "config"] as const;
+const TABS = ["status", "intuitions", "config"] as const;
 type Tab = (typeof TABS)[number];
 
 function getInitialTab(): Tab {
@@ -54,9 +53,6 @@ export default function LumiereDashboard() {
 					<TabsTrigger value="intuitions" className="flex-1">
 						Intuitions
 					</TabsTrigger>
-					<TabsTrigger value="logs" className="flex-1">
-						Journaux
-					</TabsTrigger>
 					<TabsTrigger value="config" className="flex-1">
 						Config
 					</TabsTrigger>
@@ -69,10 +65,6 @@ export default function LumiereDashboard() {
 
 					<TabsContent value="intuitions" className="mt-0">
 						<IntuitionsTab />
-					</TabsContent>
-
-					<TabsContent value="logs" className="mt-0">
-						<LogsTab />
 					</TabsContent>
 
 					<TabsContent value="config" className="mt-0">
